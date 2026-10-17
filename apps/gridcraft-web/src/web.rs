@@ -29,6 +29,9 @@ pub fn start() {
         // workbooks in it and stores what it saves (`host`).
         let bridge = if query_param("host").as_deref() == Some("parent") { crate::host::Bridge::new() } else { None };
         let app_bridge = bridge.clone();
+        // `?host=kawan`: KawanEditor drives GridCraft from its parent page (`kawan`).
+        let kawan = crate::kawan::web::Bridge::from_url().map(std::rc::Rc::new);
+        let app_kawan = kawan.clone();
         let result = eframe::WebRunner::new()
             .start(
                 canvas,
@@ -37,7 +40,7 @@ pub fn start() {
                     let inbox: Inbox = Inbox::default();
                     let mut session = Session::new();
                     // In host mode the parent sends the workbook to edit; no sample meanwhile.
-                    let q = if app_bridge.is_some() { String::new() } else { query() };
+                    let q = if app_bridge.is_some() || app_kawan.is_some() { String::new() } else { query() };
                     if let Some(name) = q.split(['?', '&']).find_map(|kv| kv.strip_prefix("sample=")) {
                         let _ = session.execute("file.new", serde_json::json!({"sample": name}));
                     } else if q.contains("sample") {
@@ -46,6 +49,9 @@ pub fn start() {
                     let mut services = services(inbox.clone(), cc.egui_ctx.clone());
                     if let Some(bridge) = &app_bridge {
                         bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
+                    }
+                    if let Some(k) = &app_kawan {
+                        crate::kawan::attach(&mut services, k, &cc.egui_ctx);
                     }
                     let mut app = SheetApp::new(session, services);
                     app.ui.system_theme = true;
@@ -65,10 +71,13 @@ pub fn start() {
                         }
                         bridge.post_ready();
                     }
-                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge }))
+                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, kawan: app_kawan }))
                 }),
             )
             .await;
+        if let (Err(e), Some(k)) = (&result, &kawan) {
+            k.post_start_failed(&format!("{e:?}"));
+        }
         if let (Err(e), Some(bridge)) = (&result, &bridge) {
             bridge.post_failed(&format!("{e:?}"));
         }
@@ -93,6 +102,7 @@ struct WebShell {
     app: SheetApp,
     inbox: Inbox,
     bridge: Option<crate::host::Bridge>,
+    kawan: Option<std::rc::Rc<crate::kawan::web::Bridge>>,
 }
 
 impl eframe::App for WebShell {
@@ -113,6 +123,9 @@ impl eframe::App for WebShell {
             });
         }
         self.app.logic(ctx);
+        if let Some(k) = &self.kawan {
+            k.tick(&mut crate::kawan::host::GridHost(&mut self.app));
+        }
     }
 
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {

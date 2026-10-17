@@ -1,0 +1,96 @@
+//! GridCraft as a KawanEditor bridge host.
+
+use gridcraft_engine::io::{base64_decode, base64_encode};
+use gridcraft_ui_egui::SheetApp;
+use serde_json::{Value, json};
+
+use super::protocol::{Classify, CommandInfo, Host};
+
+/// Formats GridCraft writes; a document opened in one of them is saved back in it, others save as xlsx.
+const SAVE_FORMATS: &[&str] = &["xlsx", "csv", "tsv", "json", "html"];
+/// Formats that keep everything; only a save in one of these leaves the workbook clean (as upstream).
+const LOSSLESS: &[&str] = &["xlsx", "json"];
+
+pub struct GridHost<'a>(pub &'a mut SheetApp);
+
+fn ext(name: &str) -> String {
+    name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default()
+}
+
+impl GridHost<'_> {
+    /// The format `save` writes: the opened file's own format when GridCraft writes it, else xlsx.
+    fn save_format(&self) -> String {
+        let opened = self.0.session.active().map(|d| ext(&d.title)).unwrap_or_default();
+        if SAVE_FORMATS.contains(&opened.as_str()) { opened } else { "xlsx".to_string() }
+    }
+
+    fn serialize(&mut self) -> Result<(String, Vec<u8>), String> {
+        self.0.session.active().ok_or("no document")?;
+        // A cell still being typed into belongs in the save, as with the app's own Save.
+        self.0.commit_edit(0, 0, false, false);
+        let format = self.save_format();
+        let out = self.0.run("file.saveBytes", json!({"format": format}))?;
+        let name = out.get("name").and_then(Value::as_str).ok_or("saveBytes returned no name")?.to_string();
+        let bytes = out.get("base64").and_then(Value::as_str).and_then(base64_decode).ok_or("saveBytes returned no data")?;
+        Ok((name, bytes))
+    }
+}
+
+impl Host for GridHost<'_> {
+    fn open(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), String> {
+        self.0.run("file.open", json!({"name": name, "base64": base64_encode(&bytes)})).map(|_| ())
+    }
+
+    fn save(&mut self) -> Result<(String, Vec<u8>), String> {
+        let saved = self.serialize()?;
+        self.mark_saved();
+        Ok(saved)
+    }
+
+    fn export_copy(&mut self) -> Result<(String, Vec<u8>), String> {
+        self.serialize()
+    }
+
+    fn exec(&mut self, id: &str, params: Value) -> Result<Value, String> {
+        self.0.run(id, params)
+    }
+
+    fn commands(&self) -> Vec<CommandInfo> {
+        self.0
+            .session
+            .commands()
+            .into_iter()
+            .map(|c| CommandInfo {
+                id: c.id.to_string(),
+                label: c.label.to_string(),
+                menu: c.menu.join(" › "),
+                mutates: gridcraft_engine::find_command(c.id).is_some_and(|s| s.undoable),
+            })
+            .collect()
+    }
+
+    fn dirty(&self) -> bool {
+        self.0.session.documents().iter().any(|d| d.is_dirty())
+    }
+
+    fn revision(&self) -> u64 {
+        self.0.session.active().map_or(0, |d| d.revision)
+    }
+
+    fn set_author(&mut self, name: &str) {
+        self.0.session.prefs.user_name = name.chars().take(200).collect();
+    }
+
+    fn classify(&self, name: &str) -> Classify {
+        // Only a file in the save format is the document's save; Export as CSV/Web Page are copies.
+        if ext(name) == self.save_format() { Classify::Save } else { Classify::Export }
+    }
+
+    fn mark_saved(&mut self) {
+        if LOSSLESS.contains(&self.save_format().as_str())
+            && let Some(doc) = self.0.session.active_mut()
+        {
+            doc.saved = doc.wb.clone();
+        }
+    }
+}
