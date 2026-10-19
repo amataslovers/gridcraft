@@ -60,7 +60,7 @@ pub struct CommandInfo {
 
 impl CommandSpec {
     pub fn info(&self, s: &Session) -> CommandInfo {
-        let e = (self.enabled)(s);
+        let e = crate::kawan::allows(self.id, self.undoable).map_err(str::to_string).and_then(|()| (self.enabled)(s));
         CommandInfo {
             id: self.id,
             label: self.label,

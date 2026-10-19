@@ -180,6 +180,12 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
                     let mut tabs: Vec<&str> = TABS.to_vec();
                     let ctx_tabs = contextual_tabs(app);
                     tabs.extend(ctx_tabs.iter());
+                    tabs.retain(|t| !gridcraft_engine::kawan::tab_hidden(t));
+                    if gridcraft_engine::kawan::tab_hidden(&app.ui.ribbon_tab)
+                        && let Some(first) = tabs.first()
+                    {
+                        app.ui.ribbon_tab = first.to_string();
+                    }
                     for tab in tabs {
                         let active = app.ui.ribbon_tab == tab;
                         let contextual = ctx_tabs.contains(&tab);
@@ -233,6 +239,10 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
                 egui::ScrollArea::horizontal().scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = vec2(2.0, 2.0);
+                        // Every tab hidden by the host: no body (the fallback above found none).
+                        if gridcraft_engine::kawan::tab_hidden(&app.ui.ribbon_tab) {
+                            return;
+                        }
                         match app.ui.ribbon_tab.as_str() {
                             "Home" => home(app, ui),
                             "Insert" => insert(app, ui),

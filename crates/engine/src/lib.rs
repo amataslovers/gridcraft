@@ -13,6 +13,7 @@ pub mod cmd;
 pub mod display;
 pub mod fill;
 pub mod io;
+pub mod kawan;
 pub mod links;
 pub mod outline;
 pub mod paper;
@@ -317,6 +318,7 @@ impl Session {
     /// Panics inside commands are caught and reported; the workbook is restored.
     pub fn execute(&mut self, id: &str, params: Json) -> Result<Json> {
         let spec = find_command(id).ok_or_else(|| EngineError::UnknownCommand(id.to_string()))?;
+        crate::kawan::allows(id, spec.undoable).map_err(|why| EngineError::Disabled(id.to_string(), why.to_string()))?;
         if let Err(why) = (spec.enabled)(self) {
             return Err(EngineError::Disabled(id.to_string(), why));
         }

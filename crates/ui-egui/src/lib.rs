@@ -492,6 +492,10 @@ impl SheetApp {
     }
 
     pub fn run_or_alert(&mut self, id: &str, params: Json) {
+        // Print and Export as PDF below open pages or pickers before the engine sees the command.
+        if let Err(why) = gridcraft_engine::kawan::allows(id, false) {
+            return self.alert(format!("command `{id}` is not available right now: {why}"));
+        }
         // A menu/shortcut opens the settings first; the Print page's button submits explicitly.
         if id == "file.print" {
             if self.services.print_native.is_some() {
@@ -546,6 +550,10 @@ impl SheetApp {
     /// browser. Rendering errors use the usual alert; asynchronous spooler errors stay visible
     /// on the Print page. The engine command still returns PDF bytes without submitting.
     pub fn print_now(&mut self, params: Json) {
+        // The title bar's Print… and Ctrl+P call this directly.
+        if let Err(why) = gridcraft_engine::kawan::allows("file.print", false) {
+            return self.alert(format!("command `file.print` is not available right now: {why}"));
+        }
         if let Err(error) = self.submit_print(params) {
             self.alert(error);
         }
