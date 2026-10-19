@@ -2754,6 +2754,7 @@ fn filter_menu(app: &mut SheetApp, ui: &mut egui::Ui, geo: &Geo, was_open: bool)
         let _ = app.session.run("data.filter", json!({"range": r.a1()}));
         if let Some(sh2) = app.session.active().and_then(|d| d.wb.active()).map(|s| s.autofilter.is_some())
             && !sh2
+            && gridcraft_engine::kawan::allows("data.filter", true).is_ok()
         {
             let d = app.session.active_mut();
             if let Some(d) = d {

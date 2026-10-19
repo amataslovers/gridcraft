@@ -21,6 +21,9 @@ const SAVE_FORMATS: &[&str] = &["xlsx", "csv", "tsv", "json", "html"];
 /// Formats that keep everything; only a save in one of these leaves the workbook clean (as upstream).
 const LOSSLESS: &[&str] = &["xlsx", "json"];
 
+/// State queries and selection moves the UI runs on its own; the host's lists skip them.
+const QUERIES: &[&str] = &["cell.get", "selection.*", "sheet.activate"];
+
 pub struct GridHost<'a>(pub &'a mut SheetApp);
 
 fn ext(name: &str) -> String {
@@ -90,6 +93,7 @@ impl Host for GridHost<'_> {
 
     fn set_policy(&mut self, mut p: Policy) {
         p.mutating = ALSO_MUTATING.iter().map(|s| s.to_string()).collect();
+        p.queries = QUERIES.iter().map(|s| s.to_string()).collect();
         policy::set(p);
     }
 

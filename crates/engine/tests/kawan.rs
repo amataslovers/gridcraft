@@ -62,3 +62,14 @@ fn upstream_policy_changes_nothing() {
     kawan::set(Policy::default());
     s.execute("cell.set", json!({"cell": "A1", "input": "x"})).unwrap();
 }
+
+#[test]
+fn allow_and_deny_spare_the_queries_the_ui_reads() {
+    let mut s = session();
+    let queries = vec!["cell.get".to_string(), "selection.*".to_string()];
+    kawan::set(Policy { allow: Some(vec!["cell.set".into()]), deny: vec!["cell.*".into(), "selection.*".into()], queries, ..Policy::default() });
+    assert!(s.execute("cell.get", json!({"cell": "A1"})).is_ok());
+    assert!(s.execute("selection.set", json!({"range": "B2"})).is_ok());
+    assert!(refused(s.execute("home.bold", json!({"range": "A1"}))));
+    kawan::set(Policy::default());
+}
