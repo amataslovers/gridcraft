@@ -51,6 +51,7 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
         }
         ui.horizontal_centered(|ui| {
             ui.add_space(TITLE_LEFT_PAD);
+            crate::kawan_brand::header_logo(ui, app.services.open_url.as_deref());
             // AutoSave toggle (saves after each change when the workbook has a file).
             ui.label(egui::RichText::new("AutoSave").font(theme::ui_font(12.5)).color(t.text_dim));
             let on = app.grid.autosave();
@@ -2268,7 +2269,7 @@ fn automate(app: &mut SheetApp, ui: &mut Ui) {
     if __k.clicked() {
         app.open_dialog("journal", json!({}));
     }
-    let __k = big_button(ui, Icon::Script, "About\nGridCraft", "Version, contributors and the AI models that helped", false);
+    let __k = big_button(ui, Icon::Script, "About\nKawanEditor", "Version, contributors and the AI models that helped", false);
     control_keytip(app, ui, &__k, "about");
     if __k.clicked() {
         app.open_dialog("about", json!({}));

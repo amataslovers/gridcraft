@@ -20,6 +20,7 @@ mod formula_locale;
 pub mod grid;
 pub mod i18n;
 pub mod icons;
+pub mod kawan_brand;
 pub mod keymap;
 pub mod keytips;
 pub mod outline;

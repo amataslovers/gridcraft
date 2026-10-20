@@ -674,7 +674,7 @@ impl Dialog {
             "commandSearch" => Dialog::custom("commandSearch", "Search Commands", json!({})),
             "agents" => Dialog::custom("agents", "Agent Control", json!({})),
             "about" => {
-                let mut d = Dialog::custom("about", "About GridCraft", json!({}));
+                let mut d = Dialog::custom("about", "About KawanEditor", json!({}));
                 d.tab = match p("tab").as_str() {
                     Some(t @ ("Contributors" | "Models")) => t.to_string(),
                     _ => "About".into(),
@@ -776,7 +776,7 @@ impl Dialog {
             "pickList" => Dialog::custom("pickList", "Pick From List", json!({})),
             "saveCopy" => Dialog::custom("saveCopy", "Save a Copy", json!({"format": p("format")})),
             "saveChanges" => Dialog::custom("saveChanges", "Save Changes?", json!({"title": p("title")})),
-            "start" => Dialog::custom("start", "GridCraft", json!({})),
+            "start" => Dialog::custom("start", gridcraft_engine::kawan::PRODUCT, json!({})),
             "comments" => {
                 app.grid.pane = None;
                 app.run_or_alert("review.showComments", json!({"on": true}));
@@ -1468,7 +1468,7 @@ fn form_fields(ui: &mut egui::Ui, d: &mut Dialog) {
     });
 }
 
-/// Help ▸ About GridCraft: the app, its contributors and the AI models that helped. The credits
+/// Help ▸ About KawanEditor: the app, its contributors and the AI models that helped. The credits
 /// are compiled in (`crate::credits`, docs/contributors.md).
 fn about(ui: &mut egui::Ui, d: &mut Dialog) {
     ui.horizontal(|ui| {
@@ -1483,12 +1483,10 @@ fn about(ui: &mut egui::Ui, d: &mut Dialog) {
         "Contributors" => crate::credits::contributors_ui(ui),
         "Models" => crate::credits::models_ui(ui),
         _ => {
-            ui.heading("GridCraft");
+            crate::kawan_brand::about_heading(ui);
             ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
             ui.add_space(4.0);
-            ui.label("A clean-room, open-source, Rust-native spreadsheet. Part of ArtCraft.");
-            ui.hyperlink_to("getartcraft.com/apps/gridcraft", "https://getartcraft.com/apps/gridcraft");
-            ui.hyperlink_to("Join the ArtCraft Discord", "https://discord.gg/artcraft");
+            ui.label(crate::kawan_brand::about());
         }
     }
 }

@@ -35,6 +35,7 @@ Generated-in-code art is original and has no file to list: the UI icon set (`cra
 | `assets/app-icon/hicolor/scalable/apps/ai.storyteller.gridcraft.svg` | GridCraft contributors | original (hand-written SVG; `packaging/icons.sh`) | MIT OR Apache-2.0 (`assets/app-icon/LICENSE.txt`) | Placeholder icon, copy of gridcraft.svg |
 | `assets/app-icon/README.md` | GridCraft contributors | original | MIT OR Apache-2.0 | Icon documentation |
 | `assets/app-icon/LICENSE.txt` | (licence text) | original | — | Licence of the app icon files |
+| `crates/ui-egui/assets/kawan-logo.png` | KawanEditor contributors (drawn by kawan-editor `assets/brand/make_logo.py`) | contributor-original, the kawan-editor repository (`assets/brand/kawan-logo.png`) | MIT OR Apache-2.0 | KawanEditor builds only: title bar and About logo, web favicon |
 | `docs/images/hero-sales.png` | GridCraft contributors | screenshot of GridCraft rendered offscreen (`crates/ui-egui/examples/snapshot.rs`) showing an original sample workbook | MIT OR Apache-2.0 | README screenshot; no third-party content |
 | `docs/images/budget.png` | GridCraft contributors | screenshot of GridCraft rendered offscreen (`crates/ui-egui/examples/snapshot.rs`) showing an original sample workbook | MIT OR Apache-2.0 | README screenshot; no third-party content |
 | `docs/images/grades-formulas.png` | GridCraft contributors | screenshot of GridCraft rendered offscreen (`crates/ui-egui/examples/snapshot.rs`) showing an original sample workbook | MIT OR Apache-2.0 | README screenshot; no third-party content |
