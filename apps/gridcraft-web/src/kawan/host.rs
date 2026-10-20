@@ -94,7 +94,11 @@ impl Host for GridHost<'_> {
     fn set_policy(&mut self, mut p: Policy) {
         p.mutating = ALSO_MUTATING.iter().map(|s| s.to_string()).collect();
         p.queries = QUERIES.iter().map(|s| s.to_string()).collect();
+        let mode = gridcraft_ui_egui::kawan_brand::theme_mode(p.theme);
         policy::set(p);
+        // Always, `System` too (the browser's, live); the next frame re-applies the theme with
+        // the host accent. As the bridge: the host's own command lists do not block it.
+        let _ = policy::as_host(|| self.0.run("view.theme", json!({"mode": mode})));
     }
 
     fn classify(&self, name: &str) -> Classify {

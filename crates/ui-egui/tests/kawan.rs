@@ -174,3 +174,31 @@ fn host_logo_without_href_is_not_a_link() {
     assert_eq!(logo, Some([256, 256]), "a bad host PNG falls back to the default logo");
     kawan::set(Policy::default());
 }
+
+#[test]
+fn host_accent_reaches_visuals() {
+    use egui::Color32;
+    use gridcraft_ui_egui::theme::Tokens;
+    let visuals = |h: &Harness<'static, SheetApp>| h.ctx.global_style().visuals.clone();
+    kawan::set(Policy::default());
+    let mut h = harness(app());
+    assert_eq!(visuals(&h).selection.stroke.color, Color32::from_rgb(0x10, 0x7C, 0x41), "GridCraft's own accent without a host accent");
+    // A policy arriving after start-up: the bridge's init then runs `view.theme` with the host theme.
+    let accent = Color32::from_rgb(0xE1, 0x1D, 0x48);
+    kawan::set(Policy { accent: Some([0xE1, 0x1D, 0x48]), ..Policy::default() });
+    h.state_mut().run("view.theme", json!({"mode": "light"})).unwrap();
+    h.run_steps(4);
+    assert_eq!(visuals(&h).selection.stroke.color, accent);
+    assert_eq!(visuals(&h).hyperlink_color, accent);
+    assert_eq!(visuals(&h).selection.bg_fill, Color32::from_rgb(240, 213, 219), "accent_soft, light");
+    assert_eq!(Tokens::get(&h.ctx).sel_border, accent, "every Tokens::get caller");
+    h.state_mut().run("view.theme", json!({"mode": "dark"})).unwrap();
+    h.run_steps(4);
+    assert!(visuals(&h).dark_mode);
+    assert_eq!(visuals(&h).selection.stroke.color, accent);
+    assert_eq!(visuals(&h).selection.bg_fill, Color32::from_rgb(96, 37, 50), "accent_soft, dark");
+    kawan::set(Policy::default());
+    h.run_steps(4);
+    assert_eq!(visuals(&h).selection.stroke.color, Tokens::dark().accent, "GridCraft's own dark accent again");
+    assert_eq!(Tokens::get(&h.ctx), Tokens::dark());
+}

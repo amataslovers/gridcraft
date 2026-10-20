@@ -138,7 +138,7 @@ impl Tokens {
     }
 
     pub fn get(ctx: &egui::Context) -> Tokens {
-        if ctx.global_style().visuals.dark_mode { Tokens::dark() } else { Tokens::light() }
+        crate::kawan_brand::tint(if ctx.global_style().visuals.dark_mode { Tokens::dark() } else { Tokens::light() })
     }
 }
 
@@ -679,7 +679,7 @@ pub fn apply(ctx: &egui::Context, dark: bool) {
     // Install both palettes before System can switch between the style slots.
     for theme in [egui::Theme::Light, egui::Theme::Dark] {
         let dark = theme == egui::Theme::Dark;
-        let t = if dark { Tokens::dark() } else { Tokens::light() };
+        let t = crate::kawan_brand::tint(if dark { Tokens::dark() } else { Tokens::light() });
         let mut v = if dark { Visuals::dark() } else { Visuals::light() };
         v.panel_fill = t.window;
         v.window_fill = t.menu_bg;

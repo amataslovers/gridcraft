@@ -1,10 +1,12 @@
-//! KawanEditor branding (logo, About line) for the GridCraft UI.
+//! KawanEditor branding (logo, About line) and the host's accent colour for the GridCraft UI.
 //! GridCraft's own UI calls these at a few hook points; everything here reads the host policy
 //! (`gridcraft_engine::kawan`) and falls back to KawanEditor's default logo and GridCraft's own
 //! colours.
 
-use egui::{Sense, vec2};
+use egui::{Color32, Sense, vec2};
 use gridcraft_engine::kawan as policy;
+
+use crate::theme::Tokens;
 
 /// The default logo: KawanEditor's mark, 256 x 256.
 const DEFAULT_LOGO: &[u8] = include_bytes!("../assets/kawan-logo.png");
@@ -110,9 +112,127 @@ pub fn about() -> String {
     policy::about("GridCraft")
 }
 
+/// GridCraft's `view.theme` mode for the host's colour scheme (`System` follows the browser).
+pub fn theme_mode(theme: policy::Theme) -> &'static str {
+    match theme {
+        policy::Theme::System => "system",
+        policy::Theme::Light => "light",
+        policy::Theme::Dark => "dark",
+    }
+}
+
+/// True once per new host policy: the frame that sees it re-applies the theme (the accent).
+pub fn policy_changed(ctx: &egui::Context) -> bool {
+    let generation = policy::generation();
+    ctx.data_mut(|d| std::mem::replace(d.get_temp_mut_or(egui::Id::new("kawan-generation"), generation), generation) != generation)
+}
+
+fn rgb(c: [u8; 3]) -> Color32 {
+    Color32::from_rgb(c[0], c[1], c[2])
+}
+
+/// The host accent, or `upstream` (a colour GridCraft draws outside its tokens).
+pub fn accent_or(upstream: Color32) -> Color32 {
+    policy::accent().map_or(upstream, rgb)
+}
+
+/// GridCraft's tokens with the host accent: the accent family, the selected header text, the
+/// select-all corner and the cell selection. Unchanged without an accent.
+pub fn tint(t: Tokens) -> Tokens {
+    match policy::accent() {
+        Some(a) => tint_with(t, a),
+        None => t,
+    }
+}
+
+fn tint_with(mut t: Tokens, a: [u8; 3]) -> Tokens {
+    // The surface: the window colour, which is also egui's panel fill.
+    let s = [t.window.r(), t.window.g(), t.window.b()];
+    let (dark, soft, all) = if t.dark { (0.20, 0.30, 0.35) } else { (0.25, 0.14, 0.25) };
+    t.accent = rgb(a);
+    t.accent_dark = rgb(policy::mix(a, [0; 3], dark));
+    t.accent_soft = rgb(policy::mix(s, a, soft));
+    t.header_sel_text = rgb(a);
+    t.header_all_bg = rgb(policy::mix(s, a, all));
+    // GridCraft's own wash strength: 0x1C light, 0x24 dark.
+    t.sel_fill = Color32::from_rgba_unmultiplied(a[0], a[1], a[2], t.sel_fill.a());
+    t.sel_border = rgb(a);
+    t
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn with_accent(accent: Option<[u8; 3]>) {
+        policy::set(policy::Policy { accent, ..policy::Policy::default() });
+    }
+
+    #[test]
+    fn tint_is_identity_without_accent() {
+        with_accent(None);
+        for t in [Tokens::light(), Tokens::dark()] {
+            assert_eq!(tint(t), t);
+        }
+        assert_eq!(accent_or(Color32::from_rgb(0x10, 0x7C, 0x41)), Color32::from_rgb(0x10, 0x7C, 0x41));
+    }
+
+    #[test]
+    fn tint_replaces_the_accent_family() {
+        let a = [0xE1, 0x1D, 0x48];
+        with_accent(Some(a));
+        let light = tint(Tokens::light());
+        assert_eq!(light.accent, rgb(a));
+        assert_eq!(light.header_sel_text, rgb(a));
+        assert_eq!(light.sel_border, rgb(a));
+        assert_eq!(light.accent_dark, rgb([169, 22, 54]));
+        assert_eq!(light.accent_soft, rgb([240, 213, 219]));
+        assert_eq!(light.header_all_bg, rgb([239, 190, 200]));
+        assert_eq!(light.sel_fill, Color32::from_rgba_unmultiplied(0xE1, 0x1D, 0x48, 0x1C));
+        let dark = tint(Tokens::dark());
+        assert_eq!(dark.accent, rgb(a));
+        assert_eq!(dark.header_sel_text, rgb(a));
+        assert_eq!(dark.sel_border, rgb(a));
+        assert_eq!(dark.accent_dark, rgb([180, 23, 58]));
+        assert_eq!(dark.accent_soft, rgb([96, 37, 50]));
+        assert_eq!(dark.header_all_bg, rgb([105, 37, 52]));
+        assert_eq!(dark.sel_fill, Color32::from_rgba_unmultiplied(0xE1, 0x1D, 0x48, 0x24), "GridCraft's dark alpha");
+        // Everything else stays GridCraft's.
+        for (tinted, t) in [(light, Tokens::light()), (dark, Tokens::dark())] {
+            let restored = Tokens {
+                accent: t.accent,
+                accent_dark: t.accent_dark,
+                accent_soft: t.accent_soft,
+                header_sel_text: t.header_sel_text,
+                header_all_bg: t.header_all_bg,
+                sel_fill: t.sel_fill,
+                sel_border: t.sel_border,
+                ..tinted
+            };
+            assert_eq!(restored, t);
+        }
+        assert_eq!(accent_or(Color32::from_rgb(0x10, 0x7C, 0x41)), rgb(a));
+        // The pure tokens stay upstream; only the builders (`Tokens::get`, `theme::apply`) tint.
+        assert_eq!(Tokens::light().accent, Color32::from_rgb(0x10, 0x7C, 0x41));
+        with_accent(None);
+    }
+
+    #[test]
+    fn theme_mode_maps_the_host_scheme() {
+        assert_eq!(theme_mode(policy::Theme::System), "system");
+        assert_eq!(theme_mode(policy::Theme::Light), "light");
+        assert_eq!(theme_mode(policy::Theme::Dark), "dark");
+    }
+
+    #[test]
+    fn policy_changed_once_per_set() {
+        let ctx = egui::Context::default();
+        assert!(!policy_changed(&ctx), "the first look only records the generation");
+        assert!(!policy_changed(&ctx));
+        policy::set(policy::Policy::default());
+        assert!(policy_changed(&ctx));
+        assert!(!policy_changed(&ctx));
+    }
 
     /// A 4 x 4 opaque red PNG.
     const RED_PNG: &[u8] = &[

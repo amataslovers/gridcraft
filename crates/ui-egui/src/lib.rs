@@ -1041,6 +1041,9 @@ impl SheetApp {
                 }
             }
         }
+        if crate::kawan_brand::policy_changed(ctx) {
+            theme::apply(ctx, self.ui.dark);
+        }
         if let Some(answer) = self.desktop_theme.take_change() {
             self.desktop_dark = Some(answer);
         }
